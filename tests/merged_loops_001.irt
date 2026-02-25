@@ -1,0 +1,54 @@
+--TEST--
+001: merged loops
+--ARGS--
+--save --save-cfg --save-ir-after-loop
+--CODE--
+{
+	uintptr_t c_1 = 0;
+	bool c_2 = 0;
+	bool c_3 = 1;
+	uintptr_t c_4 = func printf(uintptr_t, ...): int32_t;
+	uintptr_t c_5 = "\n";
+	l_1 = START(l_9);
+	int32_t d_2 = PARAM(l_1, "p", 1);
+	l_3 = END(l_1);
+	l_4 = LOOP_BEGIN(l_3, l_11);
+	f_1 = CALL/1(l_4, c_4, c_5);
+	l_5 = END(f_1);
+	l_6 = LOOP_BEGIN(l_5, l_13);
+	l_7 = IF(l_6, d_2);
+	l_8 = IF_TRUE(l_7);
+	l_9 = RETURN(l_8, null);
+	l_10 = IF_FALSE(l_7);
+	l_11 = LOOP_END(l_10);
+	l_12 = ENTRY(l_11, 1);
+	l_13 = LOOP_END(l_12);
+}
+--EXPECT--
+{
+	uintptr_t c_1 = 0;
+	bool c_2 = 0;
+	bool c_3 = 1;
+	uintptr_t c_4 = func printf(uintptr_t, ...): int32_t;
+	uintptr_t c_5 = "\n";
+#BB1: end=l_3, succ(1)=[BB2]
+	l_1 = START(l_10);
+	int32_t d_2 = PARAM(l_1, "p", 1);
+	l_3 = END(l_1);
+#BB2: end=l_6, idom=BB1(1), loop=HDR(1), pred(2)=[BB1, BB5], succ(1)=[BB3]
+	l_4 = LOOP_BEGIN(l_3, l_12);
+	l_5 = CALL/1(l_4, c_4, c_5);
+	l_6 = END(l_5);
+#BB3: end=l_8, idom=BB2(2), loop=HDR,BB2(2), pred(2)=[BB2, BB6], succ(2)=[BB4, BB5]
+	l_7 = LOOP_BEGIN(l_6, l_14);
+	l_8 = IF(l_7, d_2);
+#BB4: end=l_10, idom=BB3(3), pred(1)=[BB3]
+	l_9 = IF_TRUE(l_8);
+	l_10 = RETURN(l_9, null);
+#BB5: end=l_12, idom=BB3(3), loop=BB3(2), pred(1)=[BB3], succ(2)=[BB2, BB6]
+	l_11 = IF_FALSE(l_8);
+	l_12 = LOOP_END(l_11);
+#BB6: end=l_14, idom=BB5(4), loop=BB3(2), pred(1)=[BB5], succ(1)=[BB3]
+	l_13 = ENTRY(l_12, 1);
+	l_14 = LOOP_END(l_13);
+}
