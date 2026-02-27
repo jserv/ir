@@ -780,8 +780,8 @@ int ir_build_dominators_tree(ir_ctx *ctx)
 		if (UNEXPECTED(idom >= b)) {
 			/* In rare cases, LOOP_BEGIN.op1 may be a back-edge. Skip back-edges. */
 			ctx->flags2 &= ~IR_NO_LOOPS;
-//			IR_ASSERT(k > 1 && "Wrong blocks order: BB is before its single predecessor");
 			if (UNEXPECTED(k <= 1)) {
+				// IR_ASSERT(k > 1 && "Wrong blocks order: BB is before its single predecessor");
 slow_case:
 				ir_list_free(&worklist);
 				return ir_build_dominators_tree_slow(ctx);
@@ -795,6 +795,7 @@ slow_case:
 					break;
 				}
 				if (UNEXPECTED(k == 0)) {
+					// IR_ASSERT(0 && "Wrong blocks order: BB is before all its predecessors");
 					goto slow_case;
 				}
 				ir_list_push(&worklist, idom);
@@ -864,6 +865,7 @@ slow_case:
 
 		if (UNEXPECTED(!complete)) {
 			ir_list_free(&worklist);
+			// TODO: this algorithm may be incorrect. Prove and/or switch to ir_build_dominators_tree_slow() ???
 			return ir_build_dominators_tree_iterative(ctx);
 		}
 	}
@@ -912,20 +914,20 @@ static int ir_build_dominators_tree_iterative(ir_ctx *ctx)
 			if (blocks[idom].idom == 0) {
 				while (1) {
 					k--;
+					if (UNEXPECTED(k == 0)) break;
 					p++;
 					idom = *p;
 					if (blocks[idom].idom > 0) {
 						break;
 					}
-					IR_ASSERT(k > 0);
 				}
+				if (UNEXPECTED(k == 0)) continue;
 			}
 			IR_ASSERT(k != 0);
 			while (--k > 0) {
 				uint32_t pred_b = *(++p);
 
 				if (blocks[pred_b].idom > 0) {
-					IR_ASSERT(blocks[pred_b].idom > 0);
 					while (idom != pred_b) {
 						while (pred_b > idom) {
 							pred_b = blocks[pred_b].idom;
