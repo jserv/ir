@@ -613,27 +613,6 @@ static int ir_remove_unreachable_blocks(ir_ctx *ctx)
 	return 1;
 }
 
-static void compute_postnum(const ir_ctx *ctx, uint32_t *cur, uint32_t b)
-{
-	uint32_t i, *p;
-	ir_block *bb = &ctx->cfg_blocks[b];
-
-	if (bb->postnum != 0) {
-		return;
-	}
-
-	if (bb->successors_count) {
-		bb->postnum = -1; /* Marker for "currently visiting" */
-		p = ctx->cfg_edges + bb->successors;
-		i = bb->successors_count;
-		do {
-			compute_postnum(ctx, cur, *p);
-			p++;
-		} while (--i);
-	}
-	bb->postnum = (*cur)++;
-}
-
 /* Computes dominator tree using algorithm from "A Simple, Fast Dominance Algorithm" by
  * Cooper, Harvey and Kennedy. */
 static IR_NEVER_INLINE int ir_build_dominators_tree_slow(ir_ctx *ctx)
@@ -647,18 +626,36 @@ static IR_NEVER_INLINE int ir_build_dominators_tree_slow(ir_ctx *ctx)
 	edges  = ctx->cfg_edges;
 	blocks_count = ctx->cfg_blocks_count;
 
-	/* Clear the dominators tree */
-	for (b = 0, bb = &blocks[0]; b <= blocks_count; b++, bb++) {
-		bb->idom = 0;
-		bb->dom_depth = 0;
-		bb->dom_child = 0;
-		bb->dom_next_child = 0;
-	}
-
 	ctx->flags2 &= ~IR_NO_LOOPS;
 
 	postnum = 1;
-	compute_postnum(ctx, &postnum, 1);
+	ir_worklist work;
+	ir_bitset visited = ir_bitset_malloc(ctx->cfg_blocks_count + 1);
+	ir_worklist_init(&work, ctx->cfg_blocks_count + 1);
+	ir_worklist_push(&work, 1);
+	while (ir_worklist_len(&work)) {
+		b = ir_worklist_peek(&work);
+		bb = &blocks[b];
+		if (!ir_bitset_in(visited, b)) {
+
+			ir_bitset_incl(visited, b);
+			uint32_t n = bb->successors_count;
+			if (n) {
+				uint32_t *p = edges + bb->successors + n;
+				for (; n > 0; n--) {
+					uint32_t succ = *(--p);
+					ir_worklist_push(&work, succ);
+				}
+			}
+		} else {
+			/* Start from bb->idom calculated by the fast dominators algorithm */
+			// bb->idom = 0;
+			bb->postnum = postnum++;
+			ir_worklist_pop(&work);
+		}
+	}
+	ir_worklist_free(&work);
+	ir_mem_free(visited);
 
 	/* Find immediate dominators by iterative fixed-point algorithm */
 	blocks[1].idom = 1;
@@ -830,13 +827,6 @@ slow_case:
 		bb->dom_depth = idom_bb->dom_depth + 1;
 	}
 
-	/* Construct children lists sorted by block number */
-	for (b = blocks_count, bb = &blocks[b]; b >= 2; b--, bb--) {
-		ir_block *idom_bb = &blocks[bb->idom];
-		bb->dom_next_child = idom_bb->dom_child;
-		idom_bb->dom_child = b;
-	}
-
 	blocks[1].idom = 0;
 
 	if (ir_list_len(&worklist) != 0) {
@@ -878,6 +868,13 @@ slow_case:
 		}
 	}
 
+	/* Construct children lists sorted by block number */
+	for (b = blocks_count, bb = &blocks[b]; b >= 2; b--, bb--) {
+		ir_block *idom_bb = &blocks[bb->idom];
+		bb->dom_next_child = idom_bb->dom_child;
+		idom_bb->dom_child = b;
+	}
+
 	ir_list_free(&worklist);
 
 	return 1;
@@ -898,8 +895,6 @@ static int ir_build_dominators_tree_iterative(ir_ctx *ctx)
 	/* Clear the dominators tree, but keep already found dominators */
 	for (b = 0, bb = &blocks[0]; b <= blocks_count; b++, bb++) {
 		bb->dom_depth = 0;
-		bb->dom_child = 0;
-		bb->dom_next_child = 0;
 	}
 
 	/* Find immediate dominators by iterative fixed-point algorithm */
@@ -1094,35 +1089,30 @@ int ir_find_loops(ir_ctx *ctx)
 	times = ir_mem_malloc((ctx->cfg_blocks_count + 1) * 3 * sizeof(uint32_t));
 	sorted_blocks = times + (ctx->cfg_blocks_count + 1) * 2;
 
+	ir_bitset visited = ir_bitset_malloc(ctx->cfg_blocks_count + 1);
 	ir_worklist_push(&work, 1);
-	ENTRY_TIME(1) = time++;
-
 	while (ir_worklist_len(&work)) {
-		ir_block *bb;
-
 		b = ir_worklist_peek(&work);
+		if (!ir_bitset_in(visited, b)) {
+			ir_block *bb = &blocks[b];
 
-		/* Visit successors of "b". */
-next:
-		bb = &blocks[b];
-		n = bb->successors_count;
-		if (n) {
-			uint32_t *p = edges + bb->successors;
+			ir_bitset_incl(visited, b);
+			ENTRY_TIME(b) = time++;
 
-			for (; n > 0; p++, n--) {
-				uint32_t succ = *p;
-
-				if (ir_worklist_push(&work, succ)) {
-					b = succ;
-					ENTRY_TIME(b) = time++;
-					goto next;
+			n = bb->successors_count;
+			if (n) {
+				uint32_t *p = edges + bb->successors + n;
+				for (; n > 0; n--) {
+					uint32_t succ = *(--p);
+					ir_worklist_push(&work, succ);
 				}
 			}
+		} else {
+			EXIT_TIME(b) = time++;
+			ir_worklist_pop(&work);
 		}
-
-		EXIT_TIME(b) = time++;
-		ir_worklist_pop(&work);
 	}
+	ir_mem_free(visited);
 
 	/* Sort blocks by level, which is the opposite order in which we want to process them */
 	/* (Breadth First Search using "sorted_blocks" as a queue) */
