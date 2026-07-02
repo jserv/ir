@@ -79,6 +79,7 @@ static void help(const char *cmd)
 		"  -m[no-]sse4                - enable/disable SSE4 instruction set\n"
 		"  -m[no-]sse4.1              - enable/disable SSE4.1 instruction set\n"
 		"  -m[no-]sse4.2              - enable/disable SSE4.2 instruction set\n"
+		"  -m[no-]avx2                - use AVX2 instruction set\n"
 #endif
 		"  -muse-fp                   - use base frame pointer register\n"
 #ifndef _WIN32
@@ -1333,6 +1334,12 @@ int main(int argc, char **argv)
 		} else if (strcmp(argv[i], "-mno-sse4.2") == 0) {
 			mflags &= ~IR_X86_SSE42;
 			mflags_disabled |= IR_X86_SSE42;
+		} else if (strcmp(argv[i], "-mavx2") == 0) {
+			mflags |= IR_X86_AVX2;
+			mflags_disabled &= ~IR_X86_AVX2;
+		} else if (strcmp(argv[i], "-mno-avx2") == 0) {
+			mflags &= ~IR_X86_AVX2;
+			mflags_disabled |= IR_X86_AVX2;
 #endif
 		} else if (strcmp(argv[i], "-muse-fp") == 0) {
 			flags |= IR_USE_FRAME_POINTER;
@@ -1428,7 +1435,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "ERROR: -mavx is not compatible with CPU (AVX is not supported)\n");
 		return 1;
 	}
-	mflags |= (cpuinfo & (IR_X86_SSE3|IR_X86_SSSE3|IR_X86_SSE41|IR_X86_SSE42|IR_X86_BMI1)) & ~mflags_disabled;
+	mflags |= (cpuinfo & (IR_X86_SSE3|IR_X86_SSSE3|IR_X86_SSE41|IR_X86_SSE42|IR_X86_AVX2|IR_X86_BMI1)) & ~mflags_disabled;
 #endif
 
 #ifdef _WIN32
