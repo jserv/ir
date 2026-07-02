@@ -618,14 +618,16 @@ static bool ir_mem2ssa_may_promote(ir_ctx *ctx, ir_mem2ssa_split_layout *layout,
 			if (use_insn->op2 != var) {
 				return 0;
 			}
-			if (!ir_mem2ssa_add_split_var(ctx, layout, offset, ir_type_size[use_insn->type])) {
+			if (ir_type_size[use_insn->type] == layout->size
+			 || !ir_mem2ssa_add_split_var(ctx, layout, offset, ir_type_size[use_insn->type])) {
 				return 0;
 			}
 		} else if (use_insn->op == IR_STORE) {
 			if (use_insn->op2 != var || use_insn->op3 == var) {
 				return 0;
 			}
-			if (!ir_mem2ssa_add_split_var(ctx, layout, offset, ir_type_size[ctx->ir_base[use_insn->op3].type])) {
+			if (ir_type_size[ctx->ir_base[use_insn->op3].type] == layout->size
+			 || !ir_mem2ssa_add_split_var(ctx, layout, offset, ir_type_size[ctx->ir_base[use_insn->op3].type])) {
 				return 0;
 			}
 		} else {
@@ -661,14 +663,16 @@ static int ir_mem2ssa_may_split_alloca(ir_ctx *ctx, ir_mem2ssa_split_layout *lay
 			if (use_insn->op2 != var) {
 				return IR_CANNOT_CONVERT;
 			}
-			if (!ir_mem2ssa_add_split_var(ctx, layout, 0, ir_type_size[use_insn->type])) {
+			if (ir_type_size[use_insn->type] == layout->size
+			 || !ir_mem2ssa_add_split_var(ctx, layout, 0, ir_type_size[use_insn->type])) {
 				return IR_CANNOT_CONVERT;
 			}
 		} else if (use_insn->op == IR_STORE) {
 			if (use_insn->op2 != var || use_insn->op3 == var) {
 				return IR_CANNOT_CONVERT;
 			}
-			if (!ir_mem2ssa_add_split_var(ctx, layout, 0, ir_type_size[ctx->ir_base[use_insn->op3].type])) {
+			if (ir_type_size[ctx->ir_base[use_insn->op3].type] == layout->size
+			 || !ir_mem2ssa_add_split_var(ctx, layout, 0, ir_type_size[ctx->ir_base[use_insn->op3].type])) {
 				return IR_CANNOT_CONVERT;
 			}
 		} else if (use_insn->op == IR_ADD
