@@ -759,7 +759,11 @@ static void ir_emit_vstore(ir_ctx *ctx, FILE *f, ir_insn *insn)
 
 static void ir_emit_load(ir_ctx *ctx, FILE *f, ir_ref def, ir_insn *insn)
 {
-	ir_emit_def_ref(ctx, f, def);
+	if (ctx->vregs[def]) {
+		ir_emit_def_ref(ctx, f, def);
+	} else {
+		fprintf(f, "\t");
+	}
 	fprintf(f, "*((%s*)", ir_type_cname[insn->type]);
 	if (IR_IS_CONST_REF(insn->op2)) {
 		ir_emit_c_const(ctx, &ctx->ir_base[insn->op2], f);
