@@ -1,7 +1,7 @@
 /*
  * IR - Lightweight JIT Compilation Framework
  * (RA - Register Allocation, Liveness, Coalescing, SSA Deconstruction)
- * Copyright (C) 2022 Zend by Perforce.
+ * This file is part of the IR Project distributed under the MIT-style LICENSE.
  * Authors: Dmitry Stogov <dmitry@php.net>
  *
  * See: "Linear Scan Register Allocation on SSA Form", Christian Wimmer and

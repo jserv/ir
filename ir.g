@@ -1,7 +1,7 @@
 /*
  * IR - Lightweight JIT Compilation Framework
  * (IR loader)
- * Copyright (C) 2022 Zend by Perforce.
+ * This file is part of the IR Project distributed under the MIT-style LICENSE.
  * Authors: Dmitry Stogov <dmitry@php.net>
  *
  * To generate ir_load.c use llk <https://github.com/dstogov/llk>:
@@ -19,7 +19,7 @@
 /*
  * IR - Lightweight JIT Compilation Framework
  * (IR loader)
- * Copyright (C) 2022 Zend by Perforce.
+ * This file is part of the IR Project distributed under the MIT-style LICENSE.
  * Authors: Dmitry Stogov <dmitry@php.net>
  *
  * This file is generated from "ir.g". Do not edit!
