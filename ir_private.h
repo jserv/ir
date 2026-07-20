@@ -1027,6 +1027,7 @@ IR_ALWAYS_INLINE uint32_t ir_insn_len(const ir_insn *insn)
 #define IR_HAS_BLOCK_ADDR      (1<<12)
 #define IR_PREALLOCATED_STACK  (1<<13)
 #define IR_RECURSIVE_TAILCALL  (1<<14)
+#define IR_HAS_MEMCPY          (1<<15)
 
 
 /* Temporary: MEM2SSA -> SCCP */

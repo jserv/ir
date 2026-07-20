@@ -1610,6 +1610,7 @@ op2_const:
 			constraints->tmp_regs[1] = IR_SCRATCH_REG(IR_REG_RDI, IR_DEF_SUB_REF - IR_SUB_REFS_COUNT, IR_USE_SUB_REF);
 			constraints->tmp_regs[2] = IR_SCRATCH_REG(IR_REG_RCX, IR_DEF_SUB_REF - IR_SUB_REFS_COUNT, IR_USE_SUB_REF);
 			n = 3;
+			ctx->flags2 |= IR_HAS_MEMCPY;
 			break;
 		case IR_CALL:
 			insn = &ctx->ir_base[ref];
@@ -4827,6 +4828,7 @@ static void ir_emit_prologue(ir_ctx *ctx)
 	ir_backend_data *data = ctx->data;
 	dasm_State **Dst = &data->dasm_state;
 	int offset = ctx->stack_frame_size + ctx->call_stack_size;
+
 
 	if (ctx->flags & IR_USE_FRAME_POINTER) {
 		|	push Ra(IR_REG_RBP)
@@ -16056,6 +16058,13 @@ void ir_fix_stack_frame(ir_ctx *ctx)
 			}
 		}
 	}
+
+#ifdef IR_TARGET_X86
+	if (ctx->flags2 & IR_HAS_MEMCPY) {
+		IR_REGSET_INCL(ctx->used_preserved_regs, IR_REG_RSI);
+		IR_REGSET_INCL(ctx->used_preserved_regs, IR_REG_RDI);
+	}
+#endif
 
 	if (ctx->used_preserved_regs) {
 		ir_regset used_preserved_regs = (ir_regset)ctx->used_preserved_regs;
