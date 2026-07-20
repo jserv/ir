@@ -1,0 +1,20 @@
+--TEST--
+001: VSTORE of a constant into a var doesn't crash and emits a correct assignment (-O0)
+--ARGS--
+-O0 --emit-c
+--CODE--
+{
+	int32_t c_1 = 42;
+	l_1 = START(l_5);
+	int32_t d_2 = VAR(l_1, "v");
+	l_3 = VSTORE(l_1, d_2, c_1);
+	int32_t d_4, l_4 = VLOAD(l_3, d_2);
+	l_5 = RETURN(l_4, d_4);
+}
+--EXPECT--
+int32_t test(void)
+{
+	int32_t v;
+	v = 42;
+	return v;
+}

@@ -102,19 +102,6 @@ static void ir_emit_ref(ir_ctx *ctx, FILE *f, ir_ref ref)
 
 static void ir_emit_def_ref(ir_ctx *ctx, FILE *f, ir_ref def)
 {
-	ir_use_list *use_list = &ctx->use_lists[def];
-	if (use_list->count == 1) {
-		ir_ref use = ctx->use_edges[use_list->refs];
-		ir_insn *insn = &ctx->ir_base[use];
-
-		if (insn->op == IR_VSTORE || insn->op == IR_VSTORE_v) {
-			ir_insn *var = &ctx->ir_base[insn->op2];
-
-			IR_ASSERT(var->op == IR_VAR/* || var->op == IR_PARAM*/);
-			fprintf(f, "\t%s = ", ir_get_str(ctx, var->op2));
-			return;
-		}
-	}
 	IR_ASSERT(ctx->vregs[def]);
 	fprintf(f, "\td_%d = ", ctx->vregs[def]);
 }
@@ -749,16 +736,14 @@ static void ir_emit_vaddr(ir_ctx *ctx, FILE *f, ir_ref def, ir_insn *insn)
 
 static void ir_emit_vstore(ir_ctx *ctx, FILE *f, ir_insn *insn)
 {
-	if (!IR_IS_CONST_REF(insn->op3) && ctx->use_lists[insn->op3].count != 1) {
-		ir_insn *var;
+	ir_insn *var;
 
-		IR_ASSERT(insn->op2 > 0);
-		var = &ctx->ir_base[insn->op2];
-		IR_ASSERT(var->op == IR_VAR/* || var->op == IR_PARAM*/);
-		fprintf(f, "\t%s = ", ir_get_str(ctx, var->op2));
-		ir_emit_ref(ctx, f, insn->op3);
-		fprintf(f, ";\n");
-	}
+	IR_ASSERT(insn->op2 > 0);
+	var = &ctx->ir_base[insn->op2];
+	IR_ASSERT(var->op == IR_VAR/* || var->op == IR_PARAM*/);
+	fprintf(f, "\t%s = ", ir_get_str(ctx, var->op2));
+	ir_emit_ref(ctx, f, insn->op3);
+	fprintf(f, ";\n");
 }
 
 static void ir_emit_load(ir_ctx *ctx, FILE *f, ir_ref def, ir_insn *insn)
@@ -890,29 +875,21 @@ static int ir_emit_c_func(ir_ctx *ctx, const char *name, FILE *f)
 			ir_gen_dessa_moves(ctx, b, ir_add_tmp_type, tmp_types);
 		}
 		for (i = bb->start, insn = ctx->ir_base + i; i <= bb->end;) {
-			if (ctx->vregs[i]) {
+			if (insn->op == IR_VAR) {
+				/* IR_VAR never gets a vreg (see ir_assign_virtual_registers_slow()),
+				 * so it must be declared here, independently of ctx->vregs[i]. */
+				if (ctx->use_lists[i].count > 0) {
+					fprintf(f, "\t%s %s;\n", ir_type_cname[insn->type], ir_get_str(ctx, insn->op2));
+				}
+			} else if (ctx->vregs[i]) {
 				if (!ir_bitset_in(vars, ctx->vregs[i])) {
 					ir_bitset_incl(vars, ctx->vregs[i]);
 					if (insn->op == IR_PARAM) {
 						fprintf(f, "\t%s d_%d = %s;\n", ir_type_cname[insn->type], ctx->vregs[i], ir_get_str(ctx, insn->op2));
+					} else if (insn->op == IR_VLOAD || insn->op == IR_VLOAD_v) {
+						/* skip, we use variable name instead */
 					} else {
-						ir_use_list *use_list = &ctx->use_lists[i];
-
-						if (insn->op == IR_VAR) {
-							if (use_list->count > 0) {
-								fprintf(f, "\t%s %s;\n", ir_type_cname[insn->type], ir_get_str(ctx, insn->op2));
-							} else {
-								/* skip */
-							}
-						} else if ((insn->op == IR_VLOAD)
-						 || (insn->op == IR_VLOAD_v)
-						 || (use_list->count == 1
-						  && (ctx->ir_base[ctx->use_edges[use_list->refs]].op == IR_VSTORE
-						   || ctx->ir_base[ctx->use_edges[use_list->refs]].op == IR_VSTORE_v))) {
-							/* skip, we use variable name instead */
-						} else {
-							fprintf(f, "\t%s d_%d;\n", ir_type_cname[insn->type], ctx->vregs[i]);
-						}
+						fprintf(f, "\t%s d_%d;\n", ir_type_cname[insn->type], ctx->vregs[i]);
 					}
 				} else if (insn->op == IR_PARAM) {
 					IR_ASSERT(0 && "unexpected PARAM");
