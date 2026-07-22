@@ -16111,7 +16111,7 @@ void ir_fix_stack_frame(ir_ctx *ctx)
 				ctx->stack_frame_size + ctx->call_stack_size + sizeof(void*)) {
 				ctx->stack_frame_size += sizeof(void*);
 			}
-		}	
+		}
 	}
 
 	ir_fix_param_spills(ctx);
@@ -17128,3 +17128,23 @@ void ir_fix_thunk(void *thunk_entry, void *addr)
 		*addr_ptr = (int32_t)(intptr_t)(void*)((unsigned char*)addr - (code + 5));
 	}
 }
+
+#if defined(_MSC_VER) && defined(IR_TARGET_X86)
+/* MSVC doesn't enforce 16-byte stack alignment */
+__declspec(naked) int ir_call_with_aligned_stack(int (*func)(int, const char**), int argc, const char **argv) {
+	__asm {
+		push ebp
+		mov ebp, esp
+		and esp, -16
+		sub esp, 16
+		mov eax, [ebp+16]
+		mov [esp+4], eax
+		mov eax, [ebp+12]
+		mov [esp], eax
+		call [ebp+8]
+		mov esp, ebp
+		pop ebp
+		ret
+	}
+}
+#endif

@@ -906,6 +906,11 @@ bool ir_needs_thunk(const ir_code_buffer *code_buffer, void *addr);
 void *ir_emit_thunk(ir_code_buffer *code_buffer, void *addr, size_t *size_ptr);
 void ir_fix_thunk(void *thunk_entry, void *addr);
 
+#if defined(_MSC_VER) && defined(IR_TARGET_X86)
+/* MSVC doesn't enforce 16-byte stack alignment */
+int ir_call_with_aligned_stack(int (*func)(int, const char**), int argc, const char **argv);
+#endif
+
 /* Target address resolution (implementation in ir_emit.c) */
 void *ir_resolve_sym_name(const char *name);
 

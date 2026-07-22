@@ -1670,7 +1670,11 @@ finish:
 		for (i = 1; i < jit_argc; i++) {
 			jit_argv[i] = argv[run_args + i - 1];
 		}
+#if defined(_MSC_VER) && defined(IR_TARGET_X86)
+		ret = ir_call_with_aligned_stack(func, jit_argc, jit_argv);
+#else
 		ret = func(jit_argc, jit_argv);
+#endif
 
 		if (dump_time) {
 			double t = ir_time();
