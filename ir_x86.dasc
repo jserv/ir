@@ -16080,7 +16080,7 @@ void ir_fix_stack_frame(ir_ctx *ctx)
 	ctx->stack_frame_size += additional_size;
 	ctx->call_stack_size = 0;
 
-	if (ctx->flags2 & IR_16B_FRAME_ALIGNMENT) {
+	if (ctx->flags2 & (IR_16B_FRAME_ALIGNMENT|IR_HAS_CALLS)) {
 		/* Stack must be 16 byte aligned */
 		if (!(ctx->flags & IR_FUNCTION)) {
 			while (IR_ALIGNED_SIZE(ctx->stack_frame_size, 16) != ctx->stack_frame_size) {
@@ -16090,7 +16090,7 @@ void ir_fix_stack_frame(ir_ctx *ctx)
 			while (IR_ALIGNED_SIZE(ctx->stack_frame_size + sizeof(void*) * 2, 16) != ctx->stack_frame_size + sizeof(void*) * 2) {
 				ctx->stack_frame_size += sizeof(void*);
 			}
-		} else {
+		} else if (ctx->flags2 & IR_16B_FRAME_ALIGNMENT) {
 			while (IR_ALIGNED_SIZE(ctx->stack_frame_size + sizeof(void*), 16) != ctx->stack_frame_size + sizeof(void*)) {
 				ctx->stack_frame_size += sizeof(void*);
 			}
@@ -16103,15 +16103,15 @@ void ir_fix_stack_frame(ir_ctx *ctx)
 					ctx->call_stack_size += sizeof(void*);
 				}
 			}
-		}
-	} else if ((ctx->flags2 & IR_HAS_CALLS) && (ctx->flags & IR_FUNCTION) && !(ctx->flags & IR_USE_FRAME_POINTER)) {
-		if (!(ctx->flags & IR_NO_STACK_COMBINE)) {
-			ir_preallocate_call_stack(ctx);
-		}
-		while (IR_ALIGNED_SIZE(ctx->stack_frame_size + ctx->call_stack_size + sizeof(void*), 16) !=
-			ctx->stack_frame_size + ctx->call_stack_size + sizeof(void*)) {
-			ctx->stack_frame_size += sizeof(void*);
-		}
+		} else {
+			if (!(ctx->flags & IR_NO_STACK_COMBINE)) {
+				ir_preallocate_call_stack(ctx);
+			}
+			while (IR_ALIGNED_SIZE(ctx->stack_frame_size + ctx->call_stack_size + sizeof(void*), 16) !=
+				ctx->stack_frame_size + ctx->call_stack_size + sizeof(void*)) {
+				ctx->stack_frame_size += sizeof(void*);
+			}
+		}	
 	}
 
 	ir_fix_param_spills(ctx);
